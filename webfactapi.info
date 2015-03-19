@@ -1,0 +1,15 @@
+name = Webfactory API
+description = Exposes API to managed webfact created websites (docker containers)
+core = 7.x
+package = Webfact
+version = 7.x-1.0
+project = webfactapi
+dependencies[] = ctools
+dependencies[] = libraries
+dependencies[] = rest_server
+dependencies[] = services
+dependencies[] = webfact
+features[ctools][] = services:services:3
+features[features_api][] = api:2
+features[services_endpoint][] = webfact_api
+project path = sites/all/modules/custom

@@ -1,0 +1,268 @@
+<?php
+/**
+ * @file
+ * Code for the Webfactory API feature.
+ */
+
+include_once 'webfactapi.features.inc';
+
+/** Implements hook_menu */
+function webfactapi_menu() {
+
+  $items = array();
+
+  $items['webfactapi/test/%/%'] = array(
+    'page callback' => 'webfactapi_test',
+    'page arguments' => array(2, 3),
+    'access arguments' => array('access websites'),
+    'type' => MENU_CALLBACK, // no menu
+  );
+
+  return $items;
+
+}
+
+/** Access callback */
+function _webfact_api_website_resource_access($op = 'view', $args = array()) {
+
+  if ($op == 'create') {
+    //check all required data is present
+    $created_required_data = array(
+      'hostname',
+      'site_email',
+      'node_title',
+      'public',
+      'owner_uid'
+    );
+    foreach ($created_required_data as $required_data) {
+      if (!array_key_exists($required_data, $args[0]) || !$args[0][$required_data]) {
+        return services_error(t($required_data . ' is required'), 406);
+      }
+    }
+  }
+  elseif ($op == 'update') {
+
+  }
+  return TRUE;
+}
+
+/**
+ * Implements hook_services_resources
+ * @return array
+ */
+function webfactapi_services_resources() {
+  $webfact_website_resource = array(
+    'website' => array(
+      'operations' => array(
+        'retrieve' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'webfactapi',
+            'name' => 'resources/website_resource'
+          ),
+          'callback' => '_webfact_api_website_retrieve',
+          'args' => array(
+            array(
+              'name' => 'nid',
+              'optional' => FALSE,
+              'source' => array('path' => 0),
+              'type' => 'int',
+              'description' => 'The nid of the website to get',
+            ),
+          ),
+          'access callback' => '_webfact_api_website_resource_access',
+          'access arguments' => array('view'),
+          'access arguments append' => TRUE,
+        ),
+        'index' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'webfactapi',
+            'name' => 'resources/website_resource'
+          ),
+          'callback' => '_webfact_api_website_retrieve_all',
+          'args' => array(
+
+            array(
+              'name' => 'parameters',
+              'optional' => TRUE,
+              'type' => 'array',
+              'description' => 'Parameters array',
+              'default value' => array(),
+              'source' => array('param' => 'parameters'),
+            ),
+          ),
+          'access callback' => '_webfact_api_website_resource_access',
+          'access arguments' => array('view'),
+          'access arguments append' => TRUE,
+        ),
+        'update' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'webfactapi',
+            'name' => 'resources/website_resource'
+          ),
+          'callback' => '_webfact_api_website_update',
+          'args' => array(
+            array(
+              'name' => 'nid',
+              'optional' => FALSE,
+              'source' => array('path' => 0),
+              'type' => 'int',
+              'description' => 'The nid of the node to get',
+            ),
+            array(
+              'name' => 'website data',
+              'optional' => FALSE,
+              'source' => 'data',
+              'description' => 'The website data to update',
+              'type' => 'array',
+            ),
+          ),
+          'access callback' => '_webfact_api_website_resource_access',
+          'access arguments' => array('update'),
+          'access arguments append' => TRUE,
+        ),
+        'create' => array(
+          'file' => array(
+            'type' => 'inc',
+            'module' => 'webfactapi',
+            'name' => 'resources/website_resource'
+          ),
+          'callback' => '_webfact_api_website_create',
+          'args' => array(
+            array(
+              'name' => 'website data',
+              'optional' => FALSE,
+              'source' => 'data',
+              'description' => 'The website data to create',
+              'type' => 'array',
+            ),
+          ),
+          'access callback' => '_webfact_api_website_resource_access',
+          'access arguments' => array('create'),
+          'access arguments append' => TRUE,
+        ),
+      ),
+    ),
+
+  );
+
+  return $webfact_website_resource;
+}
+
+/**
+ * Test page call back
+ */
+function webfactapi_test($test, $param) {
+
+  global $base_url;
+
+
+  switch ($test) {
+
+    case "websites" :
+
+      $options = array(
+        'method' => 'GET',
+        'timeout' => 15,
+        'headers' => array('Content-Type' => 'application/json'),
+      );
+
+      $result = drupal_http_request("$base_url/webfact_api/website", $options);
+
+      break;
+
+    case "websites-public" :
+
+      $options = array(
+        'method' => 'GET',
+        'timeout' => 15,
+        'headers' => array('Content-Type' => 'application/json'),
+      );
+
+      $result = drupal_http_request("$base_url/webfact_api/website?parameters[field_public]=1", $options);
+
+      break;
+
+    case "websites-private" :
+
+      $options = array(
+        'method' => 'GET',
+        'timeout' => 15,
+        'headers' => array('Content-Type' => 'application/json'),
+      );
+
+      $result = drupal_http_request("$base_url/webfact_api/website?parameters[field_public]=0", $options);
+
+      break;
+
+    case "website-create" :
+
+      $data = array(
+        'node_title' => 'AFDSFDS',
+        'hostname' => 'fdsafdsae',
+        'site_email' => 'gggggg@test.com',
+        'public' => 1,
+        'owner_uid' => 6,
+      );
+      $create_data = json_encode($data);
+
+      $options = array(
+        'method' => 'POST',
+        'data' => $create_data,
+        'timeout' => 15,
+        'headers' => array('Content-Type' => 'application/json'),
+      );
+
+      $result = drupal_http_request("$base_url/webfact_api/website", $options);
+
+      $result_data = json_decode($result->data);
+
+      $new_website_nid = $result_data->website_nid;
+
+      $w = new WebfactController('admin');
+      if ($w) {
+        $w->arguments('create', $new_website_nid, 0);
+      }
+
+      break;
+
+    case "website-update" :
+
+      $data = array('hostname' => 'newguy');
+
+      $update_data = json_encode($data);
+
+      $options = array(
+        'method' => 'PUT',
+        'data' => $update_data,
+        'timeout' => 15,
+        'headers' => array('Content-Type' => 'application/json'),
+      );
+
+      $result = drupal_http_request("$base_url/webfact_api/website/" . $param, $options);
+
+
+      break;
+  }
+
+  krumo($result);
+
+  krumo(json_decode($result->data));
+
+  return $result->data;
+
+}
+
+
+/**
+ * Implements function hook_rest_server_headers_parsed_alter
+ * For the time being allow CORS from any domain
+ */
+function webfactapi_rest_server_headers_parsed_alter(&$headers) {
+  drupal_add_http_header('Access-Control-Allow-Origin', '*');
+  //below isn't working
+  //$headers['Access-Control-Allow-Origin'] = "*";
+}
+
